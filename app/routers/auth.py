@@ -24,26 +24,37 @@ async def register(user_in: UserCreate, session: AsyncSession = Depends(get_sess
     await session.refresh(user)
     return user
 
-@router.post("/login", response_model=dict[str, str])
+@router.post("/login", response_model=dict[str, str], description="Login con email y password")
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_session)
 ):
-    result = await session.execute(select(User).where(User.email == form_data.username))
-    user = result.scalar_one_or_none()
-    
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciales inválidas",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    try:
+        result = await session.execute(select(User).where(User.email == form_data.username))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email no encontrado",
+            )
+            
+        if not verify_password(form_data.password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Contraseña incorrecta",
+            )
 
-    if user.is_deleted:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuario inactivo"
-        )
+        if user.is_deleted:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Usuario inactivo"
+            )
 
-    token = create_access_token({"sub": str(user.id)})
-    return {"access_token": token, "token_type": "bearer"}
+        token = create_access_token({"sub": str(user.id)})
+        return {"access_token": token, "token_type": "bearer"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error en el proceso de login"
+        ) from e

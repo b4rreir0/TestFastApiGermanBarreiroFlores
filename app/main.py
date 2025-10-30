@@ -1,10 +1,37 @@
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from app.core.middleware import TimerMiddleware
+from app.routers import auth, users, posts, tags
 
-app = FastAPI(
-    
+logging.basicConfig(
+    level=logging.INFO,
+    format='\033[1;36m%(asctime)s\033[0m | \033[1;32m%(levelname)s\033[0m | \033[1;34m%(message)s\033[0m'
 )
+
+app = FastAPI()
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Manejador personalizado para errores de validación"""
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Error de validación",
+            "errors": [
+                {
+                    "loc": err["loc"],
+                    "msg": err["msg"],
+                    "type": err["type"]
+                }
+                for err in exc.errors()
+            ]
+        }
+    )
+
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,11 +41,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
+app.add_middleware(TimerMiddleware)
 
-@app.get("/", tags=["Root"])
-async def root():
-    return {"message": "holaa muundo "}
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(posts.router)
+app.include_router(tags.router)
+
+
 
 if __name__ == "__main__":
     import uvicorn
