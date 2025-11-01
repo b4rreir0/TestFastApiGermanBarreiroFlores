@@ -6,23 +6,24 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SECRET_KEY = os.environ["SECRET_KEY"]
+SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("La variable de entorno SECRET_KEY es requerida")
 
-ALGORITHM = os.environ["ALGORITHM"]
+ALGORITHM = os.getenv("ALGORITHM")
 if not ALGORITHM:
     raise ValueError("La variable de entorno ALGORITHM es requerida")
 
+ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
 try:
-    ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"])
-except (KeyError, ValueError):
+    ACCESS_TOKEN_EXPIRE_MINUTES = int(ACCESS_TOKEN_EXPIRE_MINUTES)
+except (TypeError, ValueError):
     raise ValueError("La variable de entorno ACCESS_TOKEN_EXPIRE_MINUTES es requerida y debe ser un número entero")
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
-    bcrypt__rounds=12  
+    bcrypt__rounds=12
 )
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -39,4 +40,5 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
     password_bytes = password.encode('utf-8')[:72]
-    return pwd_context.hash(password_bytes.decode('utf-8'))
+    safe_password = password_bytes.decode('utf-8', errors='ignore')
+    return pwd_context.hash(safe_password)

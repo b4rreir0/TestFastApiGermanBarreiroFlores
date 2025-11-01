@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.core.middleware import TimerMiddleware
+from app.core.error_handler import register_error_handlers
 from app.routers import auth, users, posts, tags
 
 logging.basicConfig(
@@ -13,9 +14,10 @@ logging.basicConfig(
 
 app = FastAPI()
 
+register_error_handlers(app)
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Manejador personalizado para errores de validación"""
     return JSONResponse(
         status_code=422,
         content={
@@ -53,7 +55,6 @@ app.include_router(tags.router)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        "app.main:app",
         host="0.0.0.0",
         port=8000,
         reload=True  
